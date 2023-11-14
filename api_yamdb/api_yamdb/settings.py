@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 
@@ -112,3 +113,11 @@ STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 # Users
 
 AUTH_USER_MODEL = 'users.User'
+
+
+# JWT Token
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
