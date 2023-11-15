@@ -8,13 +8,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     Если нет, пользователю разрешено только просматривать контент
     """
 
-    def has_permission(self, request, view):
-        return (
-            request.method in permissions.SAFE_METHODS
-            or request.user.is_staff
-        )
-
     def has_object_permission(self, request, view, obj):
         return (
             request.method in permissions.SAFE_METHODS
-            or request.user.is_staff is True)
+            or request.user.is_staff)

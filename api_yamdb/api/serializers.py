@@ -51,9 +51,9 @@ class TitleSerializer(serializers.ModelSerializer):
         model = Title
         fields = ('name', 'year', 'category', 'genre',)
 
-    def validate(self, data):
-        if data['year'] > timezone.now().year:
+    def validate_year(self, value):
+        if value > timezone.now().year:
             raise serializers.ValidationError(
                 'Нельзя добавлять произведения, которые еще не вышли!'
             )
-        return data
+        return value
