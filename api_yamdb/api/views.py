@@ -1,9 +1,16 @@
+import http
+import uuid
+
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import AccessToken
 
-from .serializers import UserSerializer
+from .serializers import UserSerializer, SignUpSerializer, TokenSerializer
 
 
 User = get_user_model()
@@ -19,7 +26,22 @@ class SignUpAPIView(APIView):
     """
 
     def post(self, *args, **kwargs):
-        pass
+        serializer = SignUpSerializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data.get('username')
+        email = serializer.validated_data.get('email')
+
+        user, _ = User.objects.get_or_create(username=username, email=email)
+        confirmation_code = uuid.uuid4()
+        user.confirmation_code = confirmation_code
+        user.save()
+
+        send_mail(subject='Подтверждение аккаунта',
+                  message=f'Код подтверждения: {confirmation_code}',
+                  from_email='django@example.com',
+                  recipient_list=[user.email])
+        return Response({'message': 'Email sent'}, status=http.HTTPStatus.OK)
+
 
 
 class TokenAPIView(APIView):
@@ -30,7 +52,17 @@ class TokenAPIView(APIView):
     """
 
     def post(self, *args, **kwargs):
-        pass
+        serializer = TokenSerializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+
+        username = serializer.validated_data.get('username')
+        confirmation_code = serializer.validated_data.get('confirmation_code')
+        user = get_object_or_404(User, username=username)
+
+        if user.confirmation_code == confirmation_code:
+            token = AccessToken.for_user(user)
+            return Response({'token': str(token)}, status=http.HTTPStatus.OK)
+        return Response({'message': 'Invalid data!'}, status=http.HTTPStatus.BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -48,7 +80,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(methods=['GET', 'PATCH'],
             detail=False,
-            url_path='me/',
             permission_classes=[permissions.IsAuthenticated])
-    def me(self):
-        pass
+    def me(self, request):
+        serializer = UserSerializer(request.user)
+        if request.method == 'PATCH':
+            pass
+        return Response(serializer.data)

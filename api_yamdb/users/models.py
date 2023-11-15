@@ -3,4 +3,8 @@ from django.db import models
 
 
 class User(AbstractUser):
-    pass
+    confirmation_code = models.UUIDField(
+        verbose_name='Уникальный код',
+        unique=True,
+        null=True
+    )
