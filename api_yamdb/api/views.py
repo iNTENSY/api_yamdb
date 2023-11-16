@@ -15,9 +15,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
-from .serializers import UserSerializer, SignUpSerializer, TokenSerializer
-from .permissions import IsAdmin
-
+from .serializers import UserSerializer, SignUpSerializer, TokenSerializer, CategorySerializer, GenreSerializer, \
+    TitleSerializer
+from .permissions import IsAdmin, IsAdminOrReadOnly
+from ..reviews.models import Category, Genre, Title
 
 User = get_user_model()
 
@@ -108,3 +109,52 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save(role=request.user.role)
         return Response(serializer.data)
+
+
+class GenreViewSet(viewsets.ModelViewSet):
+    """
+    Класс позволяет просматривать модель Genre
+    всем пользователям.
+    Манипуляции с моделью Genre разрешены
+    исключительно администратору.
+    """
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.SearchFilter,)
+    pagination_class = None
+    search_fields = ('genre__name')
+
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    """
+    Класс позволяет просматривать модель Category
+    всем пользователям.
+    Манипуляции с моделью Category разрешены
+    исключительно администратору.
+    """
+
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.SearchFilter,)
+    pagination_class = None
+    search_fields = ('category__name')
+
+
+class TitleViewSet(viewsets.ModelViewSet):
+    """
+    Класс позволяет просматривать модель Title
+    всем пользователям.
+    Манипуляции с моделью Title разрешены
+    исключительно администратору.
+    """
+
+    queryset = Title.objects.all()
+    serializer_class = TitleSerializer
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (DjangoFilterBackend,)
+    pagination_class = None
+    filterset_fields = (
+        'category__slug', 'genre__slug', 'name', 'year'
+    )
