@@ -1,24 +1,21 @@
 import http
-import uuid
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db import IntegrityError
-from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken
 
 from .serializers import UserSerializer, SignUpSerializer, TokenSerializer, CategorySerializer, GenreSerializer, \
     TitleSerializer
 from .permissions import IsAdmin, IsAdminOrReadOnly
-from ..reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title
 
 User = get_user_model()
 

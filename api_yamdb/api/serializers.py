@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from api_yamdb.reviews.models import Title, Category, Genre
+from reviews.models import Title, Category, Genre
 
 User = get_user_model()
 
