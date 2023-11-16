@@ -13,9 +13,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
 from .serializers import UserSerializer, SignUpSerializer, TokenSerializer, CategorySerializer, GenreSerializer, \
-    TitleSerializer
+    TitleSerializer, ReviewSerializer, CommentSerializer
 from .permissions import IsAdmin, IsAdminOrReadOnly
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, Review, Comment
 
 User = get_user_model()
 
@@ -155,3 +155,15 @@ class TitleViewSet(viewsets.ModelViewSet):
     filterset_fields = (
         'category__slug', 'genre__slug', 'name', 'year'
     )
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
