@@ -1,15 +1,21 @@
+import http
+
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import AccessToken
 
-from reviews.models import Genre, Category, Title
-
-from .serializers import (UserSerializer, GenreSerializer,
-                          CategorySerializer, TitleSerializer)
-from .permissions import IsAdminOrReadOnly
-
+from .serializers import UserSerializer, SignUpSerializer, TokenSerializer, CategorySerializer, GenreSerializer, \
+    TitleSerializer
+from .permissions import IsAdmin, IsAdminOrReadOnly
+from reviews.models import Category, Genre, Title
 
 User = get_user_model()
 
@@ -24,7 +30,25 @@ class SignUpAPIView(APIView):
     """
 
     def post(self, *args, **kwargs):
-        pass
+        serializer = SignUpSerializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data.get('username')
+        email = serializer.validated_data.get('email')
+
+        try:
+            user, is_created = User.objects.get_or_create(
+                email=email,
+                username=username)
+        except IntegrityError:
+            raise ValidationError(detail='Invalid request data!')
+
+        confirmation_code = default_token_generator.make_token(user)
+        send_mail(subject='Подтверждение аккаунта',
+                  message=f'Код подтверждения: {confirmation_code}',
+                  from_email='django@example.com',
+                  recipient_list=[user.email])
+        return Response({'email': f'{email}', 'username': f'{username}'}, status=http.HTTPStatus.OK)
+
 
 
 class TokenAPIView(APIView):
@@ -35,7 +59,21 @@ class TokenAPIView(APIView):
     """
 
     def post(self, *args, **kwargs):
-        pass
+        serializer = TokenSerializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+
+        username = serializer.validated_data.get('username')
+        confirmation_code = serializer.validated_data.get('confirmation_code')
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'message': 'not now'}, status=http.HTTPStatus.NOT_FOUND)
+
+        if default_token_generator.check_token(user, confirmation_code):
+            token = AccessToken.for_user(user)
+            return Response({'token': str(token)}, status=http.HTTPStatus.CREATED)
+        return Response({'confirmation_code': ['Invalid token!']}, status=http.HTTPStatus.BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -48,22 +86,32 @@ class UserViewSet(viewsets.ModelViewSet):
     """
 
     queryset = User.objects.all()
+    permission_classes = (IsAdmin,)
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAdminUser]
+    filter_backends = (filters.SearchFilter, DjangoFilterBackend)
+    search_fields = ('username',)
+    lookup_field = 'username'
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     @action(methods=['GET', 'PATCH'],
             detail=False,
-            url_path='me/',
             permission_classes=[permissions.IsAuthenticated])
-    def me(self):
-        pass
+    def me(self, request):
+        serializer = UserSerializer(request.user)
+        if request.method == 'PATCH':
+            serializer = UserSerializer(
+                request.user,
+                data=request.data,
+                partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(role=request.user.role)
+        return Response(serializer.data)
 
 
 class GenreViewSet(viewsets.ModelViewSet):
     """
     Класс позволяет просматривать модель Genre
     всем пользователям.
-
     Манипуляции с моделью Genre разрешены
     исключительно администратору.
     """
@@ -79,7 +127,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
     """
     Класс позволяет просматривать модель Category
     всем пользователям.
-
     Манипуляции с моделью Category разрешены
     исключительно администратору.
     """
@@ -96,7 +143,6 @@ class TitleViewSet(viewsets.ModelViewSet):
     """
     Класс позволяет просматривать модель Title
     всем пользователям.
-
     Манипуляции с моделью Title разрешены
     исключительно администратору.
     """
