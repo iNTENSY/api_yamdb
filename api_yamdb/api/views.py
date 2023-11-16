@@ -2,23 +2,21 @@ import http
 import uuid
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, permissions, filters
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
-from .serializers import (UserSerializer, GenreSerializer,
-                          CategorySerializer, TitleSerializer, 
-                          SignUpSerializer, TokenSerializer)
-from reviews.models import Genre, Category, Title
-
-from .serializers import (UserSerializer, GenreSerializer,
-                          CategorySerializer, TitleSerializer)
-from .permissions import IsAdminOrReadOnly
+from .serializers import UserSerializer, SignUpSerializer, TokenSerializer
+from .permissions import IsAdmin
 
 
 User = get_user_model()
@@ -39,16 +37,19 @@ class SignUpAPIView(APIView):
         username = serializer.validated_data.get('username')
         email = serializer.validated_data.get('email')
 
-        user, _ = User.objects.get_or_create(username=username, email=email)
-        confirmation_code = uuid.uuid4()
-        user.confirmation_code = confirmation_code
-        user.save()
+        try:
+            user, is_created = User.objects.get_or_create(
+                email=email,
+                username=username)
+        except IntegrityError:
+            raise ValidationError(detail='Invalid request data!')
 
+        confirmation_code = default_token_generator.make_token(user)
         send_mail(subject='Подтверждение аккаунта',
                   message=f'Код подтверждения: {confirmation_code}',
                   from_email='django@example.com',
                   recipient_list=[user.email])
-        return Response({'message': 'Email sent'}, status=http.HTTPStatus.OK)
+        return Response({'email': f'{email}', 'username': f'{username}'}, status=http.HTTPStatus.OK)
 
 
 
@@ -65,12 +66,16 @@ class TokenAPIView(APIView):
 
         username = serializer.validated_data.get('username')
         confirmation_code = serializer.validated_data.get('confirmation_code')
-        user = get_object_or_404(User, username=username)
 
-        if user.confirmation_code == confirmation_code:
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'message': 'not now'}, status=http.HTTPStatus.NOT_FOUND)
+
+        if default_token_generator.check_token(user, confirmation_code):
             token = AccessToken.for_user(user)
-            return Response({'token': str(token)}, status=http.HTTPStatus.OK)
-        return Response({'message': 'Invalid data!'}, status=http.HTTPStatus.BAD_REQUEST)
+            return Response({'token': str(token)}, status=http.HTTPStatus.CREATED)
+        return Response({'confirmation_code': ['Invalid token!']}, status=http.HTTPStatus.BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -83,8 +88,12 @@ class UserViewSet(viewsets.ModelViewSet):
     """
 
     queryset = User.objects.all()
+    permission_classes = (IsAdmin,)
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAdminUser]
+    filter_backends = (filters.SearchFilter, DjangoFilterBackend)
+    search_fields = ('username',)
+    lookup_field = 'username'
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     @action(methods=['GET', 'PATCH'],
             detail=False,
@@ -92,58 +101,10 @@ class UserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         serializer = UserSerializer(request.user)
         if request.method == 'PATCH':
-            pass
+            serializer = UserSerializer(
+                request.user,
+                data=request.data,
+                partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(role=request.user.role)
         return Response(serializer.data)
-
-
-
-class GenreViewSet(viewsets.ModelViewSet):
-    """
-    Класс позволяет просматривать модель Genre
-    всем пользователям.
-
-    Манипуляции с моделью Genre разрешены
-    исключительно администратору.
-    """
-    queryset = Genre.objects.all()
-    serializer_class = GenreSerializer
-    permission_classes = (permissions.IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    pagination_class = None
-    search_fields = ('genre__name')
-
-
-class CategoryViewSet(viewsets.ModelViewSet):
-    """
-    Класс позволяет просматривать модель Category
-    всем пользователям.
-
-    Манипуляции с моделью Category разрешены
-    исключительно администратору.
-    """
-
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    permission_classes = (permissions.IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    pagination_class = None
-    search_fields = ('category__name')
-
-
-class TitleViewSet(viewsets.ModelViewSet):
-    """
-    Класс позволяет просматривать модель Title
-    всем пользователям.
-
-    Манипуляции с моделью Title разрешены
-    исключительно администратору.
-    """
-
-    queryset = Title.objects.all()
-    serializer_class = TitleSerializer
-    permission_classes = (permissions.IsAdminOrReadOnly,)
-    filter_backends = (DjangoFilterBackend,)
-    pagination_class = None
-    filterset_fields = (
-        'category__slug', 'genre__slug', 'name', 'year'
-    )
