@@ -1,7 +1,7 @@
 import http
+import uuid
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,10 +12,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
-from .serializers import UserSerializer, SignUpSerializer, TokenSerializer, CategorySerializer, GenreSerializer, \
-    TitleSerializer, ReviewSerializer, CommentSerializer
+from .serializers import (UserSerializer, SignUpSerializer,
+                          TokenSerializer, CategorySerializer,
+                          GenreSerializer, TitleSerializer,
+                          ReviewSerializer, CommentSerializer)
 from .permissions import IsAdmin, IsAdminOrReadOnly
 from reviews.models import Category, Genre, Title, Review, Comment
+
 
 User = get_user_model()
 
@@ -36,19 +39,38 @@ class SignUpAPIView(APIView):
         email = serializer.validated_data.get('email')
 
         try:
-            user, is_created = User.objects.get_or_create(
+            user, _ = User.objects.get_or_create(
                 email=email,
-                username=username)
+                username=username
+            )
         except IntegrityError:
+            # Ошибка возникает, если хотя бы один из параметров
+            # уже присутствует в базе данных у какого-то пользователя.
+            # Ошибка возникает по причине присутствия параметра
+            # unique у этих полей.
             raise ValidationError(detail='Invalid request data!')
 
-        confirmation_code = default_token_generator.make_token(user)
+        confirmation_code = self.make_token(user)
+
         send_mail(subject='Подтверждение аккаунта',
                   message=f'Код подтверждения: {confirmation_code}',
                   from_email='django@example.com',
                   recipient_list=[user.email])
-        return Response({'email': f'{email}', 'username': f'{username}'}, status=http.HTTPStatus.OK)
+        return Response({'email': f'{email}',
+                         'username': f'{username}'},
+                        status=http.HTTPStatus.OK)
 
+    @staticmethod
+    def make_token(user: User) -> uuid.UUID:
+        """
+        Метод генерирует код подтверждения, сохраняя
+        его в поле confirmation_code для конкретного пользователя.
+        Данный метод возвращает сгенерированный код для пользователя.
+        """
+        confirmation_code: uuid.UUID = uuid.uuid4()
+        user.confirmation_code = confirmation_code
+        user.save()
+        return confirmation_code
 
 
 class TokenAPIView(APIView):
@@ -68,12 +90,15 @@ class TokenAPIView(APIView):
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            return Response({'message': 'not now'}, status=http.HTTPStatus.NOT_FOUND)
+            return Response({'message': 'Invalid data!'},
+                            status=http.HTTPStatus.NOT_FOUND)
 
-        if default_token_generator.check_token(user, confirmation_code):
+        if user.confirmation_code == confirmation_code:
             token = AccessToken.for_user(user)
-            return Response({'token': str(token)}, status=http.HTTPStatus.CREATED)
-        return Response({'confirmation_code': ['Invalid token!']}, status=http.HTTPStatus.BAD_REQUEST)
+            return Response({'token': str(token)},
+                            status=http.HTTPStatus.CREATED)
+        return Response({'confirmation_code': 'Invalid token!'},
+                        status=http.HTTPStatus.BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
