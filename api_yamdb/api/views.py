@@ -5,9 +5,10 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, permissions, filters
+from rest_framework import viewsets, permissions, filters, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
@@ -133,7 +134,10 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(viewsets.GenericViewSet,
+                   mixins.CreateModelMixin,
+                   mixins.ListModelMixin,
+                   mixins.DestroyModelMixin):
     """
     Класс позволяет просматривать модель Genre
     всем пользователям.
@@ -144,11 +148,15 @@ class GenreViewSet(viewsets.ModelViewSet):
     serializer_class = GenreSerializer
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (filters.SearchFilter,)
-    pagination_class = None
-    search_fields = ('genre__name')
+    pagination_class = LimitOffsetPagination
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(viewsets.GenericViewSet,
+                      mixins.CreateModelMixin,
+                      mixins.ListModelMixin,
+                      mixins.DestroyModelMixin):
     """
     Класс позволяет просматривать модель Category
     всем пользователям.
@@ -160,8 +168,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (filters.SearchFilter,)
-    pagination_class = None
-    search_fields = ('category__name')
+    pagination_class = LimitOffsetPagination
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -176,10 +185,10 @@ class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
-    pagination_class = None
-    filterset_fields = (
+    pagination_class = LimitOffsetPagination
+    '''filterset_fields = (
         'category__slug', 'genre__slug', 'name', 'year'
-    )
+    )'''
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
