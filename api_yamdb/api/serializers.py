@@ -78,7 +78,7 @@ class TitleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = ('name', 'year', 'category', 'genre',)
+        fields = ('name', 'year', 'category', 'genre', 'description',)
 
     def validate_year(self, value):
         if value > timezone.now().year:
