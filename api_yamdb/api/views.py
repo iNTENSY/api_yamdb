@@ -173,22 +173,34 @@ class CategoryViewSet(viewsets.GenericViewSet,
     lookup_field = 'slug'
 
 
-class TitleViewSet(viewsets.ModelViewSet):
+class TitleViewSet(viewsets.GenericViewSet,
+                   mixins.CreateModelMixin,
+                   mixins.RetrieveModelMixin,
+                   mixins.UpdateModelMixin,
+                   mixins.ListModelMixin,
+                   mixins.DestroyModelMixin):
     """
     Класс позволяет просматривать модель Title
     всем пользователям.
     Манипуляции с моделью Title разрешены
     исключительно администратору.
     """
-
-    queryset = Title.objects.all()
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     pagination_class = LimitOffsetPagination
-    '''filterset_fields = (
-        'category__slug', 'genre__slug', 'name', 'year'
-    )'''
+    http_method_names = ['get', 'post', 'head', 'delete', 'patch']
+    filterset_fields = ('year', 'name',)
+
+    def get_queryset(self):
+        queryset = Title.objects.all()
+        genre = self.request.query_params.get('genre')
+        category = self.request.query_params.get('category')
+        if genre:
+            queryset = queryset.filter(genre__slug=genre)
+        if category:
+            queryset = queryset.filter(category__slug=category)
+        return queryset
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

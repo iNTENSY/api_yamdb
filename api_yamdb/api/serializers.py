@@ -69,6 +69,11 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ('name', 'slug',)
 
 
+class TitleListingField(serializers.SlugRelatedField):
+    def to_representation(self, value):
+        return {'name': value.name, 'slug': value.slug}
+
+
 class TitleSerializer(serializers.ModelSerializer):
     """
     Сериализатор для работы с произведениями.
@@ -76,9 +81,35 @@ class TitleSerializer(serializers.ModelSerializer):
     Метод validate проверяет, вышло ли поизведение
     """
 
+    '''genre = serializers.SlugRelatedField(
+        queryset=Genre.objects.all(),
+        slug_field='slug',
+        many=True
+    )
+    category = serializers.SlugRelatedField(
+        queryset=Category.objects.all(),
+        slug_field='slug'
+    )'''
+    category = TitleListingField(
+        queryset=Category.objects.all(),
+        slug_field='slug'
+    )
+    genre = TitleListingField(
+        queryset=Genre.objects.all(),
+        slug_field='slug',
+        many=True
+    )
+
     class Meta:
         model = Title
-        fields = ('name', 'year', 'category', 'genre', 'description',)
+        fields = '__all__'
+
+    def validate_name(self, value):
+        if len(value) > 256:
+            raise serializers.ValidationError(
+                'Название не может быть длиннее 256 символов!'
+            )
+        return value
 
     def validate_year(self, value):
         if value > timezone.now().year:

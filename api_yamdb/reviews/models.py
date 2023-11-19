@@ -22,7 +22,7 @@ class Category(models.Model):
 
 class Title(models.Model):
     name = models.TextField(max_length=200)
-    year = models.DateField()
+    year = models.IntegerField()
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
@@ -30,7 +30,7 @@ class Title(models.Model):
         blank=True,
         related_name='category'
     )
-    genre = models.ManyToManyField(Genre, blank=True)
+    genre = models.ManyToManyField(Genre, related_name='genre', blank=True)
     description = models.TextField(max_length=200)
 
     def __str__(self):
