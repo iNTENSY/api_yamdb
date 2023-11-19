@@ -70,6 +70,9 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class TitleListingField(serializers.SlugRelatedField):
+    """
+    Кастомное поле для правильного отображения жанров и категорий.
+    """
     def to_representation(self, value):
         return {'name': value.name, 'slug': value.slug}
 
