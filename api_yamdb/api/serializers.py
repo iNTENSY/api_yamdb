@@ -81,15 +81,6 @@ class TitleSerializer(serializers.ModelSerializer):
     Метод validate проверяет, вышло ли поизведение
     """
 
-    '''genre = serializers.SlugRelatedField(
-        queryset=Genre.objects.all(),
-        slug_field='slug',
-        many=True
-    )
-    category = serializers.SlugRelatedField(
-        queryset=Category.objects.all(),
-        slug_field='slug'
-    )'''
     category = TitleListingField(
         queryset=Category.objects.all(),
         slug_field='slug'
