@@ -17,7 +17,8 @@ from .serializers import (UserSerializer, SignUpSerializer,
                           TokenSerializer, CategorySerializer,
                           GenreSerializer, TitleSerializer,
                           ReviewSerializer, CommentSerializer)
-from .permissions import IsAdmin, IsAdminOrReadOnly, IsAuthorOrModeratorOrAdminOrReadOnly
+from .permissions import (IsAdmin, IsAdminOrReadOnly,
+                          IsAuthorOrModeratorOrAdminOrReadOnly)
 from reviews.models import Category, Genre, Title, Review
 from django.shortcuts import get_object_or_404
 
@@ -213,7 +214,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
         permissions.IsAuthenticatedOrReadOnly
     ]
     pagination_class = LimitOffsetPagination
-    http_method_names = ['get', 'post', 'delete', 'head', 'options', 'patch', 'trace']
+    http_method_names = ['get', 'post', 'delete',
+                         'head', 'options', 'patch', 'trace']
 
     def get_queryset(self):
         return get_object_or_404(
@@ -230,7 +232,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     """Действия с комментариями"""
     serializer_class = CommentSerializer
-    http_method_names = ['get', 'post', 'delete', 'head', 'options', 'patch', 'trace']
+    http_method_names = ['get', 'post', 'delete', 'head',
+                         'options', 'patch', 'trace']
     permission_classes = [
         IsAuthorOrModeratorOrAdminOrReadOnly,
         permissions.IsAuthenticatedOrReadOnly
