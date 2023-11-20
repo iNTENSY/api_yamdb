@@ -83,6 +83,7 @@ class TitleSerializer(serializers.ModelSerializer):
 
     Метод validate проверяет, вышло ли поизведение
     """
+    rating = serializers.FloatField(read_only=True)
 
     category = TitleListingField(
         queryset=Category.objects.all(),
@@ -114,18 +115,33 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    author = serializers.SlugRelatedField(slug_field='username',
-                                          read_only=True)
+    '''Сериалайзер отзывов.'''
+    author = serializers.SlugRelatedField(
+        read_only=True, slug_field='username',
+    )
 
     class Meta:
-        model = Review
         fields = '__all__'
+        model = Review
+        read_only_fields = ('title', 'author')
+
+    def validate(self, data):
+        if Review.objects.filter(
+            author=self.context['request'].user,
+            title_id=self.context['view'].kwargs.get('title_id')
+        ).exists() and self.context['request'].method == 'POST':
+            raise serializers.ValidationError(
+                'Нельзя оставить два отзыва на одно произведение.')
+        return data
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.SlugRelatedField(slug_field='username',
-                                          read_only=True)
+    '''Сериалайзер комментариев.'''
+    author = serializers.SlugRelatedField(
+        read_only=True, slug_field='username'
+    )
 
     class Meta:
-        model = Comment
         fields = '__all__'
+        model = Comment
+        read_only_fields = ('review', 'author')
