@@ -69,6 +69,14 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ('name', 'slug',)
 
 
+class TitleListingField(serializers.SlugRelatedField):
+    """
+    Кастомное поле для правильного отображения жанров и категорий.
+    """
+    def to_representation(self, value):
+        return {'name': value.name, 'slug': value.slug}
+
+
 class TitleSerializer(serializers.ModelSerializer):
     """
     Сериализатор для работы с произведениями.
@@ -76,9 +84,26 @@ class TitleSerializer(serializers.ModelSerializer):
     Метод validate проверяет, вышло ли поизведение
     """
 
+    category = TitleListingField(
+        queryset=Category.objects.all(),
+        slug_field='slug'
+    )
+    genre = TitleListingField(
+        queryset=Genre.objects.all(),
+        slug_field='slug',
+        many=True
+    )
+
     class Meta:
         model = Title
-        fields = ('name', 'year', 'category', 'genre', 'description',)
+        fields = '__all__'
+
+    def validate_name(self, value):
+        if len(value) > 256:
+            raise serializers.ValidationError(
+                'Название не может быть длиннее 256 символов!'
+            )
+        return value
 
     def validate_year(self, value):
         if value > timezone.now().year:
