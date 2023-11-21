@@ -1,9 +1,12 @@
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
 
 from reviews.models import Title, Category, Genre, Review, Comment
+
 
 User = get_user_model()
 
@@ -35,10 +38,18 @@ class SignUpSerializer(serializers.ModelSerializer):
         model = User
         fields = ['username', 'email']
 
-    def validate_username(self, value):
-        if value == 'me':
+    def validate(self, attrs):
+        if attrs['username'] == 'me':
             raise ValidationError('Invalid username: `me`!')
-        return value
+
+        try:
+            User.objects.get_or_create(
+                email=attrs['email'],
+                username=attrs['username']
+            )
+        except IntegrityError:
+            raise ValidationError(detail='Invalid request data!')
+        return attrs
 
 
 class TokenSerializer(serializers.ModelSerializer):
@@ -47,6 +58,10 @@ class TokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'confirmation_code']
+
+    def validate_username(self, value):
+        get_object_or_404(User, username=value)
+        return value
 
 
 class GenreSerializer(serializers.ModelSerializer):

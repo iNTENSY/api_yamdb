@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth import get_user_model
 
+from api_yamdb.settings import DEFAULT_MAX_LENGTH_TEXT_MESSAGE
 
 User = get_user_model()
 
@@ -81,7 +82,7 @@ class Review(models.Model):
         ordering = ['-pub_date']
 
     def __str__(self) -> str:
-        return self.text[:10]
+        return self.text[:DEFAULT_MAX_LENGTH_TEXT_MESSAGE]
 
 
 class Comment(models.Model):
@@ -106,4 +107,4 @@ class Comment(models.Model):
         ordering = ['-pub_date']
 
     def __str__(self) -> str:
-        return self.text[:10]
+        return self.text[:DEFAULT_MAX_LENGTH_TEXT_MESSAGE]

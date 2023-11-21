@@ -141,3 +141,6 @@ SIMPLE_JWT = {
 # Email
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'django@example.com'
+
+DEFAULT_MAX_LENGTH_TEXT_MESSAGE = 10
