@@ -36,13 +36,6 @@ class Title(models.Model):
     genre = models.ManyToManyField(Genre, related_name='genre', blank=True)
     description = models.TextField(max_length=200)
 
-    @property
-    def rating(self):
-        reviews = self.reviews.all()
-        if reviews:
-            return sum([review.score for review in reviews]) / reviews.count()
-        return None
-
     def __str__(self):
         return self.name
 
