@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.utils import timezone
+from django.db.models import Avg
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -98,7 +99,7 @@ class TitleSerializer(serializers.ModelSerializer):
 
     Метод validate проверяет, вышло ли поизведение
     """
-    rating = serializers.FloatField(read_only=True)
+    rating = serializers.SerializerMethodField()
 
     category = TitleListingField(
         queryset=Category.objects.all(),
@@ -127,6 +128,12 @@ class TitleSerializer(serializers.ModelSerializer):
                 'Нельзя добавлять произведения, которые еще не вышли!'
             )
         return value
+
+    def get_rating(self, obj):
+        if obj.reviews.count() == 0:
+            return None
+        r = Review.objects.filter(title=obj).aggregate(rating=Avg('score'))
+        return r['rating']
 
 
 class ReviewSerializer(serializers.ModelSerializer):
