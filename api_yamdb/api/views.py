@@ -3,6 +3,7 @@ import http
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, filters, mixins
 from rest_framework.decorators import action
@@ -12,10 +13,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api_yamdb import settings
+from .filters import TitlesFilter
 from .serializers import (UserSerializer, SignUpSerializer,
                           TokenSerializer, CategorySerializer,
                           GenreSerializer, TitleSerializer,
-                          ReviewSerializer, CommentSerializer)
+                          ReviewSerializer, CommentSerializer,
+                          ReadOnlyTitleSerializer)
 from .permissions import (IsAdmin, IsAdminOrReadOnly,
                           IsAuthorOrModeratorOrAdminOrReadOnly)
 from reviews.models import Category, Genre, Title, Review
@@ -41,14 +44,6 @@ class SignUpAPIView(APIView):
         username = serializer.validated_data.get('username')
         email = serializer.validated_data.get('email')
         user = User.objects.get(username=username)
-
-        # try:
-        #     user, _ = User.objects.get_or_create(
-        #         email=email,
-        #         username=username
-        #     )
-        # except IntegrityError:
-        #     raise ValidationError(detail='Invalid request data!')
 
         confirmation_code = default_token_generator.make_token(user)
 
@@ -155,35 +150,26 @@ class CategoryViewSet(viewsets.GenericViewSet,
     lookup_field = 'slug'
 
 
-class TitleViewSet(viewsets.GenericViewSet,
-                   mixins.CreateModelMixin,
-                   mixins.RetrieveModelMixin,
-                   mixins.UpdateModelMixin,
-                   mixins.ListModelMixin,
-                   mixins.DestroyModelMixin):
+class TitleViewSet(viewsets.ModelViewSet):
     """
     Класс позволяет просматривать модель Title
     всем пользователям.
     Манипуляции с моделью Title разрешены
     исключительно администратору.
     """
-    queryset = Title.objects.all()
+
+    queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TitlesFilter
     pagination_class = LimitOffsetPagination
     http_method_names = ['get', 'post', 'head', 'delete', 'patch']
-    filterset_fields = ('year', 'name',)
 
-    def get_queryset(self):
-        queryset = Title.objects.all()
-        genre = self.request.query_params.get('genre')
-        category = self.request.query_params.get('category')
-        if genre:
-            queryset = queryset.filter(genre__slug=genre)
-        if category:
-            queryset = queryset.filter(category__slug=category)
-        return queryset
+    def get_serializer_class(self):
+        if self.action in ("retrieve", "list"):
+            return ReadOnlyTitleSerializer
+        return TitleSerializer
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

@@ -41,7 +41,7 @@ class Title(models.Model):
 
 
 class Review(models.Model):
-    '''Модель отзывов.'''
+    """Модель отзывов."""
     author = models.ForeignKey(
         User,
         related_name='reviews',
@@ -79,7 +79,7 @@ class Review(models.Model):
 
 
 class Comment(models.Model):
-    '''Модель комментариев.'''
+    """Модель комментариев."""
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,

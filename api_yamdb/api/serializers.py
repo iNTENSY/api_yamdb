@@ -1,7 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from django.utils import timezone
-from django.db.models import Avg
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -85,27 +83,18 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ('name', 'slug',)
 
 
-class TitleListingField(serializers.SlugRelatedField):
-    """
-    Кастомное поле для правильного отображения жанров и категорий.
-    """
-    def to_representation(self, value):
-        return {'name': value.name, 'slug': value.slug}
-
-
 class TitleSerializer(serializers.ModelSerializer):
     """
     Сериализатор для работы с произведениями.
 
-    Метод validate проверяет, вышло ли поизведение
+    Метод validate проверяет, вышло ли произведение
     """
-    rating = serializers.SerializerMethodField()
 
-    category = TitleListingField(
+    category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
         slug_field='slug'
     )
-    genre = TitleListingField(
+    genre = serializers.SlugRelatedField(
         queryset=Genre.objects.all(),
         slug_field='slug',
         many=True
@@ -115,29 +104,23 @@ class TitleSerializer(serializers.ModelSerializer):
         model = Title
         fields = '__all__'
 
-    def validate_name(self, value):
-        if len(value) > 256:
-            raise serializers.ValidationError(
-                'Название не может быть длиннее 256 символов!'
-            )
-        return value
 
-    def validate_year(self, value):
-        if value > timezone.now().year:
-            raise serializers.ValidationError(
-                'Нельзя добавлять произведения, которые еще не вышли!'
-            )
-        return value
+class ReadOnlyTitleSerializer(serializers.ModelSerializer):
+    rating = serializers.IntegerField(read_only=True)
+    genre = GenreSerializer(many=True)
+    category = CategorySerializer()
 
-    def get_rating(self, obj):
-        if obj.reviews.count() == 0:
-            return None
-        r = Review.objects.filter(title=obj).aggregate(rating=Avg('score'))
-        return r['rating']
+    class Meta:
+        model = Title
+        fields = (
+            'id', 'name', 'year',
+            'rating', 'description',
+            'genre', 'category'
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    '''Сериалайзер отзывов.'''
+    """Сериалайзер отзывов."""
     author = serializers.SlugRelatedField(
         read_only=True, slug_field='username',
     )
@@ -158,7 +141,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    '''Сериалайзер комментариев.'''
+    """Сериалайзер комментариев."""
     author = serializers.SlugRelatedField(
         read_only=True, slug_field='username'
     )
