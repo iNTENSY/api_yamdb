@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth import get_user_model
 
+from api_yamdb.settings import DEFAULT_MAX_LENGTH_TEXT_MESSAGE
 
 User = get_user_model()
 
@@ -35,19 +36,12 @@ class Title(models.Model):
     genre = models.ManyToManyField(Genre, related_name='genre', blank=True)
     description = models.TextField(max_length=200)
 
-    @property
-    def rating(self):
-        reviews = self.reviews.all()
-        if reviews:
-            return sum([review.score for review in reviews]) / reviews.count()
-        return None
-
     def __str__(self):
         return self.name
 
 
 class Review(models.Model):
-    '''Модель отзывов.'''
+    """Модель отзывов."""
     author = models.ForeignKey(
         User,
         related_name='reviews',
@@ -81,11 +75,11 @@ class Review(models.Model):
         ordering = ['-pub_date']
 
     def __str__(self) -> str:
-        return self.text[:10]
+        return self.text[:DEFAULT_MAX_LENGTH_TEXT_MESSAGE]
 
 
 class Comment(models.Model):
-    '''Модель комментариев.'''
+    """Модель комментариев."""
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -106,4 +100,4 @@ class Comment(models.Model):
         ordering = ['-pub_date']
 
     def __str__(self) -> str:
-        return self.text[:10]
+        return self.text[:DEFAULT_MAX_LENGTH_TEXT_MESSAGE]

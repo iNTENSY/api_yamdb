@@ -47,7 +47,7 @@ class User(AbstractUser):
         default=USER,
         blank=True
     )
-    confirmation_code = models.UUIDField(
+    confirmation_code = models.TextField(
         verbose_name='Уникальный код',
         null=True,
         max_length=40,
