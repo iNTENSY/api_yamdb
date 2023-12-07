@@ -59,6 +59,6 @@ http://127.0.0.1:8000/redoc/
 ## Над проектом работали
 [Мария Шамсуллина](https://github.com/Azuro-chan)
 
-[Дмитрий Даценко](https://github.com/voronov-semen)
+[Дмитрий Даценко](https://github.com/iNTENSY)
 
 [Кристиан Никулин](https://github.com/KolumbChris)
